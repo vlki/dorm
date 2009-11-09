@@ -1,13 +1,22 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/**
+ * Simple Object Relational Mapping library. Is built over dibi
+ * (http://dibiphp.com/) and simplifies the retrieving and associations
+ * between tables. Is tightly connected to MySQL.
+ *
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
+ * @link       http://github.com/vlki/dorm
  */
 
 /**
- * Description of DormColumnComplex
+ * Base complex column. Complex mean composited from some sql-side functions.
  *
- * @author vlki
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
  */
 class DormColumnComplex extends DormColumn
 {

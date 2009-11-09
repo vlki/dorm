@@ -1,13 +1,23 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/**
+ * Simple Object Relational Mapping library. Is built over dibi
+ * (http://dibiphp.com/) and simplifies the retrieving and associations
+ * between tables. Is tightly connected to MySQL.
+ *
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
+ * @link       http://github.com/vlki/dorm
  */
 
 /**
- * Description of DormManyToMany
+ * Many to many (N:M) association. Implementation with one relational table
+ * with two foreign keys.
  *
- * @author vlki
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
  */
 class DormManyToMany extends DormAssociation
 {
@@ -20,7 +30,8 @@ class DormManyToMany extends DormAssociation
 
 	protected $columnForeignRelational;
 
-	public function __construct($id, $local, $foreign, $options = array()) {
+	public function __construct($id, $local, $foreign, $options = array())
+	{
 		parent::__construct($id, $local, $foreign, $options);
 
 		$this->columnLocal = new DormColumn($this->tableLocal->table . '.' . (!isset($options['columnLocal']) ? 'id' : $options['columnLocal']));
@@ -54,8 +65,8 @@ class DormManyToMany extends DormAssociation
 		$joins = array();
 		if (count($columns) > 0)
 			$joins = array(
-				new DormJoin('left', $this->columnLocal, $this->columnLocalRelational),
 				new DormJoin('left', $this->columnForeignRelational, $this->columnForeign),
+        new DormJoin('left', $this->columnLocal, $this->columnLocalRelational),
 			);
 
 		$groups = array();

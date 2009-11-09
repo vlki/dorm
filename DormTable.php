@@ -1,13 +1,22 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/**
+ * Simple Object Relational Mapping library. Is built over dibi
+ * (http://dibiphp.com/) and simplifies the retrieving and associations
+ * between tables. Is tightly connected to MySQL.
+ *
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
+ * @link       http://github.com/vlki/dorm
  */
 
 /**
- * Description of DormTable
+ * Base table abstraction.
  *
- * @author vlki
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
  */
 abstract class DormTable extends Object
 {
@@ -21,10 +30,13 @@ abstract class DormTable extends Object
 	/** @var string  Primary key */
 	public $primaryKey = 'id';
 
+	/** @var string */
+	public $rowClass = 'DormRow';
+
 	/** @var string  Column which will be the title of specified row. */
 	protected $rowTitleColumn = 'id';
 
-	/** @var DormFilter */
+	/** @var IDormFilter */
 	protected $filter;
 
 	/** @var array  Array of DormAssociation objects */
@@ -38,7 +50,7 @@ abstract class DormTable extends Object
 
 	/**
 	 * Connection getter. Is called as $this->db in inherited classes
-	 * because of syntactic suger provided by Object. Must be overlayed in
+	 * because of syntactic suger provided by Object. Must be overlaid in
 	 * inherited classes.
 	 *
 	 * @return DibiConnection
@@ -64,7 +76,7 @@ abstract class DormTable extends Object
 				$assoc->filterAddData($filteredData);
 			}
 			if (!empty($filteredData)) {
-				$addedRows = $this->db->query("INSERT INTO [" . $this->table . "]", $filteredData);
+				$this->db->query("INSERT INTO [" . $this->table . "]", $filteredData);
 				$pk = isset($data[$this->primaryKey]) ? $data[$this->primaryKey] : $this->db->insertId();
 			} else {
 				$addedRows = 0;
@@ -80,7 +92,7 @@ abstract class DormTable extends Object
 		}
 
 		$this->db->commit(); // transaction
-		return $addedRows;
+		return $pk;
 	}
 
 	/**
@@ -125,6 +137,7 @@ abstract class DormTable extends Object
 	 *
 	 * @param  mixed  primary key
 	 * @return int    deleted rows
+	 * @throw InvalidStateException
 	 */
 	public function delete($pk)
 	{
@@ -163,10 +176,11 @@ abstract class DormTable extends Object
 	*
 	* @param  mixed  primary key
 	* @return DibiRecord
+	* @throw BadRequestException
 	*/
 	public function getOne($pk)
 	{
-		$row = $this->select()->where(array($this->table . '.' . $this->primaryKey . $this->primaryModifier => $pk))->execute()->setRowClass('DormRow')->fetch();
+		$row = $this->select()->where(array($this->table . '.' . $this->primaryKey . $this->primaryModifier => $pk))->execute()->setRowClass($this->rowClass)->fetch();
 		if (!$row)
 			throw new BadRequestException("Record not found.");
 		return $row;
@@ -194,7 +208,7 @@ abstract class DormTable extends Object
 	 */
 	public function getAll()
 	{
-		$results = $this->defaultGet()->execute()->setRowClass('DormRow')->fetchAll();
+		$results = $this->defaultGet()->execute()->setRowClass($this->rowClass)->fetchAll();
 		foreach($results as &$row) {
 			foreach($this->getAssociations() as $assocId => $assoc) {
 				if ($assoc instanceof DormOneToMany || $assoc instanceof DormManyToMany) {
@@ -216,11 +230,23 @@ abstract class DormTable extends Object
 		return $this->defaultGet()->execute()->fetchPairs(NULL, $this->primaryKey);
 	}
 
+	/**
+	 * Returns simple array or records with key and value of rowTitleColumn.
+	 *
+	 * @return array
+	 */
 	public function getAllForFilter()
 	{
-		return array('?' => '?') + $this->defaultGet()->execute()->fetchPairs(NULL, $this->rowTitleColumn);
+		return $this->defaultGet()->execute()->fetchPairs($this->rowTitleColumn, $this->rowTitleColumn);
 	}
 
+	/**
+	 * Get all from table through association and filtered by some row of this table.
+	 *
+	 * @param string
+	 * @param DibiRow
+	 * @return array  Array of DibiResult objects
+	 */
 	public function getAllForeign($assocId, DibiRow $row)
 	{
 		$assoc = $this->getAssociation($assocId);
@@ -255,12 +281,13 @@ abstract class DormTable extends Object
 	protected function select($requestedColumns = array())
 	{
 		$columns = $joins = $groups = array();
-		if (count($requestedColumns) == 0) {
+		if (count($requestedColumns) === 0) {
 			$columns = array(new DormColumn($this->table . '.*'));
 			foreach($this->columnsExtensional as $alias => $c) {
 				$col = new DormColumnComplex($c);
 				$col->setAlias($alias);
-				$columns[] = $col;
+				if (!$col->isGrouped())
+					$columns[] = $col;
 			}
 		} else {
 			$bind = $this->getBind($requestedColumns);
@@ -304,6 +331,14 @@ abstract class DormTable extends Object
 		return $query;
 	}
 
+	/**
+	 * Returns bind of columns, joins and group-bys. Works recursive.
+	 *
+	 * @param array
+	 * @param string  Prefix of all columns
+	 * @param bool  Recursively bind from tables through associations
+	 * @return DormBind
+	 */
 	public function getBind($requestedColumns, $assocId = '', $deep = TRUE)
 	{
 		$columns = $joins = $binds = array();
@@ -344,11 +379,21 @@ abstract class DormTable extends Object
 
 //============================================== Filtering
 
-	public function setFilter(DormFilter $filter)
+	/**
+	 * IDormFilter setter.
+	 *
+	 * @param IDormFilter
+	 */
+	public function setFilter(IDormFilter $filter)
 	{
 		$this->filter = $filter;
 	}
 
+	/**
+	 * IDormFilter getter.
+	 *
+	 * @return IDormFilter|NULL
+	 */
 	public function getFilter()
 	{
 		return $this->filter;
@@ -356,19 +401,7 @@ abstract class DormTable extends Object
 
 
 
-//============================================== Setters & getters
-
-	
-
-	public function setConditions($conditions)
-	{
-		$this->conditions = $conditions;
-	}
-
-	public function getConditions()
-	{
-		return $this->conditions;
-	}
+//============================================== Table
 
 	/**
 	 * Return table name = table definition without prefix
@@ -385,6 +418,14 @@ abstract class DormTable extends Object
 		}
 	}
 
+
+//============================================== Associations
+
+	/**
+	 * Lazy getter of associations.
+	 *
+	 * @return array
+	 */
 	public function getAssociations()
 	{
 		if (!isset($this->associations)) {
@@ -399,11 +440,22 @@ abstract class DormTable extends Object
 		return $this->associations;
 	}
 
+	/**
+	 * Associations creator. For use, should be overlaid.
+	 *
+	 * @return array
+	 */
 	protected function createAssociations()
 	{
 		return array();
 	}
 
+	/**
+	 * Generate associations from array tree which could be defined in
+	 * parameter declaration.
+	 *
+	 * @param array
+	 */
 	protected function generateAssociations($definition)
 	{
 		$associations = array();
@@ -417,6 +469,13 @@ abstract class DormTable extends Object
 		$this->associations = $associations;
 	}
 
+	/**
+	 * Lazy getter of single association.
+	 *
+	 * @param int
+	 * @return DormAssociation
+	 * @throw InvalidArgumentException
+	 */
 	public function getAssociation($id)
 	{
 		$associations = $this->getAssociations();

@@ -1,13 +1,22 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/**
+ * Simple Object Relational Mapping library. Is built over dibi
+ * (http://dibiphp.com/) and simplifies the retrieving and associations
+ * between tables. Is tightly connected to MySQL.
+ *
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
+ * @link       http://github.com/vlki/dorm
  */
 
 /**
- * Description of OneToMany
+ * One to many association.
  *
- * @author vlki
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
  */
 class DormOneToMany extends DormAssociation
 {
@@ -17,7 +26,7 @@ class DormOneToMany extends DormAssociation
 		parent::__construct($id, $local, $foreign, $options);
 
 		$this->columnLocal = new DormColumn($this->tableLocal->table . '.' . (!isset($options['columnLocal']) ? 'id' : $options['columnLocal']));
-		$this->columnForeign = new DormColumn($this->tableForeign->table . '.' . (!isset($options['columnForeign']) ? $this->id . 'Id' : $options['columnForeign']));
+		$this->columnForeign = new DormColumn($this->tableForeign->table . '.' . (!isset($options['columnForeign']) ? $local->table . 'Id' : $options['columnForeign']));
 	}
 
 	public function getJoins($requestedColumns)

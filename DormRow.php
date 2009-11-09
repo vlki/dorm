@@ -1,13 +1,23 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+
+/**
+ * Simple Object Relational Mapping library. Is built over dibi
+ * (http://dibiphp.com/) and simplifies the retrieving and associations
+ * between tables. Is tightly connected to MySQL.
+ *
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
+ * @link       http://github.com/vlki/dorm
  */
 
 /**
- * Description of DormRow
+ * Extended DibiRow. Allow using callbacks in Value Objects to other objects
+ * in association -> lazy loading.
  *
- * @author vlki
+ * @author     Jan Vlcek
+ * @copyright  Copyright (c) 2009 Jan Vlcek
+ * @license    New BSD License
  */
 class DormRow extends DibiRow
 {
@@ -15,9 +25,11 @@ class DormRow extends DibiRow
 	/** @var array */
 	protected $callbacks = array();
 
+	/** @var array */
 	protected $results = array();
 
-	public function offsetSet($index, $newval) {
+	public function offsetSet($index, $newval)
+	{
 		$index = (string) $index;
 		if (is_callable($newval)) {
 			if (isset($this->results[$index]))
@@ -28,12 +40,14 @@ class DormRow extends DibiRow
 		}
 	}
 
-	public function offsetExists($index) {
+	public function offsetExists($index)
+	{
 		$index = (string) $index;
 		return isset($this->callbacks[$index]) ? TRUE : parent::offsetExists($index);
 	}
 
-	public function offsetGet($index) {
+	public function offsetGet($index)
+	{
 		$index = (string) $index;
 		if (isset($this->callbacks[$index])) {
 			if (!isset($this->results[$index]))
@@ -45,7 +59,8 @@ class DormRow extends DibiRow
 		}
 	}
 
-	public function offsetUnset($index) {
+	public function offsetUnset($index)
+	{
 		$index = (string) $index;
 		if (isset($this->callbacks[$index])) {
 			unset($this->callbacks[$index]);
@@ -55,7 +70,5 @@ class DormRow extends DibiRow
 			parent::offsetUnset($index);
 		}
 	}
-
-
 
 }
